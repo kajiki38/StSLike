@@ -83,6 +83,7 @@ function showShop() {
 }
 
 function renderShop() {
+  renderPlayerStatusBar(document.getElementById('shop-player-status'));
   document.getElementById('shop-gold').textContent = player.gold;
   document.getElementById('shop-remove-cost').textContent = shopState.removeCost;
 
