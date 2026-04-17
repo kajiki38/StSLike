@@ -51,7 +51,7 @@
 
   .enemy-slot { display:flex; flex-direction:column; align-items:center; cursor:default; transition:filter 0.15s; flex:0 1 158px; min-width:90px; }
   .enemy-slot.enemy-slot-boss { flex:0 1 237px; min-width:135px; }
-  .enemy-slot.enemy-slot-boss .sprite { font-size:102px; }
+  .enemy-slot.enemy-slot-boss .sprite { font-size:130px; }
   .enemy-slot.enemy-slot-boss .enemy-mini-stats { font-size:13px; }
   .enemy-slot.enemy-slot-boss .enemy-mini-name { font-size:14px; }
   .enemy-slot.dead { opacity:0.2; pointer-events:none; filter:grayscale(1); }
