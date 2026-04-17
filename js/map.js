@@ -20,7 +20,8 @@ const MAP_SCHEMA = [
   { confirmed:true,  type:'boss'             }, // col 16 ボス
 ];
 const MAP_ROWS = 4;
-const COL_W=86, ROW_H=60, NODE_R=20, MAP_PAD_X=36, MAP_PAD_Y=28;
+const COL_W=86, ROW_H=60, NODE_R=20, BOSS_NODE_R=30, MAP_PAD_X=36, MAP_PAD_Y=28;
+function getNodeR(type) { return type === 'boss' ? BOSS_NODE_R : NODE_R; }
 
 function resolveNodeType(colType, row) {
   if (colType==='combat')           return 'combat';
@@ -75,7 +76,8 @@ function generateMap() {
   }
   // col0は訪問済み、col1全行をアクセス可能に
   nodes[1].forEach(n => n.accessible=true);
-  return { nodes, currentCol:0, currentNodeIdx:0 };
+  const bossId = Math.random() < 0.5 ? 'slime_boss' : 'guardian';
+  return { nodes, currentCol:0, currentNodeIdx:0, bossId };
 }
 
 const NODE_ICON  = { combat:'⚔', elite:'⚡', rest:'🏕', shop:'🏪', event:'★', treasure:'📦', boss:'💀' };
@@ -85,10 +87,12 @@ const NODE_DESC  = {
   combat:   { name:'通常戦闘', desc:'敵と戦闘する。\n勝利するとカード報酬を1枚獲得できる。' },
   elite:    { name:'エリート', desc:'強力な敵との戦闘。\n撃破するとレリックを獲得できる。' },
   rest:     { name:'休憩エリア', desc:'最大HPの30%を回復するか、\nデッキのカード1枚をアップグレードできる。' },
-  shop:     { name:'商人の店', desc:'ゴールドでカード・レリック・ポーションを\n購入できる。カードの削除も可能。' },
+  shop:     { name:'商人の店', desc:'ゴールドでカード・レリック・ポーションを購入できる。カードの削除も可能。' },
   event:    { name:'イベント', desc:'謎の出来事が起こる。\n良いことも悪いこともある。' },
   treasure: { name:'宝箱', desc:'レリックとゴールドを\n無条件で入手できる。' },
-  boss:     { name:'ボス', desc:'ガーディアンとの最終決戦。\n撃破するとクリア！' },
+  boss:             { name:'ボス',           desc:'強大なボスとの最終決戦。\n撃破するとクリア！' },
+  boss_guardian:    { name:'ガーディアン',   desc:'ガーディアンとの最終決戦。\n撃破するとクリア！' },
+  boss_slime_boss:  { name:'スライムボス',   desc:'巨大スライムとの最終決戦。\nHPが半減すると2体に分裂する。\n撃破するとクリア！' },
 };
 
 function getNodeX(col)  { return MAP_PAD_X + col*COL_W; }
@@ -147,10 +151,12 @@ function renderMapDisplay(combatPeek = false) {
   nodes.forEach((colNodes,col)=>{
     colNodes.forEach((node,ni)=>{
       const x=getNodeX(col), y=getNodeY(node.row);
+      const r=getNodeR(node.type);
       const isCur = col===mapData.currentCol && ni===mapData.currentNodeIdx;
       const d=document.createElement('div');
       d.className='map-node';
-      d.style.cssText=`left:${x-NODE_R}px;top:${y-NODE_R}px;width:${NODE_R*2}px;height:${NODE_R*2}px;`+
+      if (node.type==='boss') d.classList.add('map-node-boss');
+      d.style.cssText=`left:${x-r}px;top:${y-r}px;width:${r*2}px;height:${r*2}px;`+
         `background:${NODE_BG[node.type]||'#111'};border:2px solid ${NODE_BORDER[node.type]||'#444'};`;
       if (isCur) {
         d.classList.add('map-node-current');
@@ -165,10 +171,12 @@ function renderMapDisplay(combatPeek = false) {
       } else {
         d.classList.add('map-node-hidden');
       }
-      d.textContent=NODE_ICON[node.type]||'?';
-      const info = NODE_DESC[node.type];
+      const isBoss = node.type === 'boss';
+      d.textContent = isBoss ? ENEMY_DEFS[mapData.bossId].sprite : (NODE_ICON[node.type]||'?');
+      const tooltipKey = isBoss ? 'boss_' + mapData.bossId : node.type;
+      const info = NODE_DESC[tooltipKey] || NODE_DESC[node.type];
       if (info) {
-        d.addEventListener('mouseenter', e => showMapTooltip(e, node.type));
+        d.addEventListener('mouseenter', e => showMapTooltip(e, tooltipKey));
         d.addEventListener('mouseleave', hideMapTooltip);
         d.addEventListener('mousemove',  e => moveMapTooltip(e));
       }
@@ -224,9 +232,13 @@ function handleMapEvent() {
 function showMapTooltip(e, type) {
   const info = NODE_DESC[type];
   if (!info) return;
+  // boss_* キーはスプライトを ENEMY_DEFS から取得、それ以外は NODE_ICON
+  const icon = type.startsWith('boss_')
+    ? ENEMY_DEFS[type.slice(5)].sprite
+    : (NODE_ICON[type] || '');
   const tip = document.getElementById('map-floating-tooltip');
   document.getElementById('map-floating-tooltip-name').innerHTML =
-    `${NODE_ICON[type]} ${info.name}`;
+    `${icon} ${info.name}`;
   document.getElementById('map-floating-tooltip-desc').innerHTML =
     info.desc.replace(/\n/g, '<br>');
   tip.classList.add('visible');

@@ -56,8 +56,13 @@ function startBattle(defs) {
     ...exhausted.filter(keep).map(revertTemp),
   ];
   deck = allCards; shuffle(deck);
+  // 戦闘ごとにリセットが必要なカード状態をクリア
+  deck.forEach(c => { c._rampageBonus = 0; c._costReduction = 0; });
   discard = []; hand = []; exhausted = [];
   player.powers = {};
+  player.noMoreDraw = false;
+  player.flameBarrier = 0;
+  player.loseStrengthEOT = 0;
   selectingUpgradeTarget = false;
   combatTurn = 0; attacksPlayedThisCombat = 0;
 
@@ -105,7 +110,7 @@ function startBattle(defs) {
 
   isEliteBattle = defs.some(d => d.isElite);
   isBossBattle = defs.some(d => d.isBoss);
-  targeting = false; pendingCard = null; actingEnemy = false;
+  targeting = false; pendingCard = null; actingEnemy = false; setInputEnabled(true);
   player.block = 0; player.weak = 0; player.vulnerable = 0;
   player.jaku = 0; player.entangled = 0; player.rageTurn = 0;
   player.tempStrengthEnd = 0; player.tempDexterityEnd = 0;
@@ -146,7 +151,7 @@ function buildEnemyDOM() {
   area.innerHTML = '';
   enemies.forEach(e => {
     const slot = document.createElement('div');
-    slot.className = 'enemy-slot entering';
+    slot.className = 'enemy-slot entering' + (e.def.isBoss ? ' enemy-slot-boss' : '');
     slot.id = `enemy-slot-${e.id}`;
     slot.innerHTML = `
       <div class="enemy-mini-stats">
@@ -319,8 +324,23 @@ function calcCardDmgPreview(card, targetEnemy = null) {
     if (player.weak > 0) raw = Math.floor(raw * 0.75);
     return { text: `${raw}×${hits}`, total: raw * hits };
   }
+  // ボディスラム: ブロック値がダメージ（strength相殺）
+  if (card.damageEqualsBlock) {
+    const blockVal = player ? (player.block || 0) : 0;
+    return { text: `${blockVal}` };
+  }
+  // ランページ: 蓄積ボーナスを反映
+  if (card.rampageDmgIncrease) baseValue += (card._rampageBonus || 0);
   const akabeko = relics.find(r => r.id === 'akabeko');
   if (akabeko && !akabeko.used) baseValue += 8;
+  // ペン先: 次のアタックが2倍
+  const penNib = relics.find(r => r.id === 'pen_nib');
+  if (penNib && penNib.ready) baseValue *= 2;
+
+  // ヘヴィブレード: 筋力倍率を反映（raw計算でstrength*mult になるよう調整）
+  if (card.strengthMultiplier && player && player.strength > 0) {
+    baseValue += (player.strength || 0) * ((card.strengthMultiplier || 1) - 1);
+  }
 
   let raw = baseValue + (player.strength || 0);
   if (player.weak > 0) raw = Math.floor(raw * 0.75);
@@ -431,14 +451,25 @@ function shuffle(arr) {
   for (let i=arr.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
 }
 function drawCards(n) {
+  if (player && player.noMoreDraw) return; // バトルトランス: このターン追加ドロー不可
   for (let i=0;i<n;i++) {
     if (deck.length===0) { deck=discard; discard=[]; shuffle(deck); log('捨て札をシャッフルして山札に戻した'); }
     if (deck.length>0) {
       const drawn = deck.pop();
       hand.push(drawn);
-      if (drawn.type === 'status' && player.powers && player.powers.evolve > 0) {
-        log(`🧬 進化: ${drawn.name}をドロー → ${player.powers.evolve}枚追加ドロー`, 'buff');
-        drawCards(player.powers.evolve);
+      if (drawn.type === 'status') {
+        if (player.powers && player.powers.evolve > 0) {
+          log(`🧬 進化: ${drawn.name}をドロー → ${player.powers.evolve}枚追加ドロー`, 'buff');
+          drawCards(player.powers.evolve);
+        }
+        // 炎の吐息: 状態異常・呪いをドローしたとき全敵にダメージ
+        if (player.powers && player.powers.flameBreath > 0) {
+          enemies.filter(e => e.hp > 0).forEach(e => {
+            const dmg = dealDamageToEnemy(e, player.powers.flameBreath);
+            log(`🐉 炎の吐息: ${e.name}に${dmg}ダメージ！`, 'damage');
+            setTimeout(()=>{ animateHit(`enemy-sprite-${e.id}`); spawnFloatDmg(dmg,`enemy-sprite-${e.id}`,'attack'); },80);
+          });
+        }
       }
     }
   }

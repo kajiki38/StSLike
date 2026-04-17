@@ -6,7 +6,7 @@
   #floor-badge { position:absolute; bottom:4%; left:12px; text-align:left; pointer-events:none; }
   #floor-num { font-size:12px; color:rgba(255,255,255,0.3); letter-spacing:2px; font-weight:bold; }
 
-  #player-stats { position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.65); border:1px solid rgba(255,255,255,0.12); border-radius:8px; padding:10px 14px; min-width:165px; backdrop-filter:blur(4px); }
+  #player-stats { position:absolute; top:12px; left:12px; background:rgba(0,0,0,0.65); border:1px solid rgba(255,255,255,0.12); border-radius:8px; padding:10px 14px; min-width:165px; max-width:185px; backdrop-filter:blur(4px); }
   .stat-name { font-size:13px; font-weight:bold; color:#f0c060; letter-spacing:1px; margin-bottom:6px; }
   .hp-row { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
   .hp-text { font-size:12px; white-space:nowrap; }
@@ -33,6 +33,7 @@
   .badge.hidden       { display:none; }
   .badge.power-badge  { background:#2a1500; border:1px solid #c09020; color:#f0c060; }
   .badge.sharphide    { background:#1a2a2a; border:1px solid #40c0c0; color:#80f0f0; }
+  .badge.split-ability { background:#2a1a00; border:1px solid #f08020; color:#ffaa44; }
   #floor-num.elite    { color:#f5a623; font-size:13px; }
 
   /* ── レリック ── */
@@ -46,9 +47,13 @@
   .relic-counter { position:absolute; bottom:-4px; right:-4px; background:#1a1a2e; border:1px solid #f5c842; border-radius:6px; font-size:9px; font-weight:bold; color:#f5c842; padding:0 3px; line-height:13px; pointer-events:none; }
 
   #player-wrap { position:absolute; bottom:22%; left:60px; display:flex; flex-direction:column; align-items:center; }
-  #enemies-area { position:absolute; bottom:22%; left:190px; right:10px; display:flex; flex-direction:row; gap:8px; align-items:flex-end; justify-content:flex-end; }
+  #enemies-area { position:absolute; bottom:22%; left:215px; right:10px; display:flex; flex-direction:row; gap:8px; align-items:flex-end; justify-content:flex-end; }
 
   .enemy-slot { display:flex; flex-direction:column; align-items:center; cursor:default; transition:filter 0.15s; flex:0 1 158px; min-width:90px; }
+  .enemy-slot.enemy-slot-boss { flex:0 1 237px; min-width:135px; }
+  .enemy-slot.enemy-slot-boss .sprite { font-size:102px; }
+  .enemy-slot.enemy-slot-boss .enemy-mini-stats { font-size:13px; }
+  .enemy-slot.enemy-slot-boss .enemy-mini-name { font-size:14px; }
   .enemy-slot.dead { opacity:0.2; pointer-events:none; filter:grayscale(1); }
   .enemy-slot.targetable { cursor:crosshair; animation:pulse-target 0.8s ease-in-out infinite alternate; }
   @keyframes pulse-target { from{filter:drop-shadow(0 0 6px #f5c842)} to{filter:drop-shadow(0 0 18px #ffdd55)} }
@@ -139,6 +144,8 @@
   #map-svg { position:absolute; top:0; left:0; pointer-events:none; overflow:visible; }
   #map-nodes { position:absolute; top:0; left:0; }
   .map-node { position:absolute; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; cursor:default; user-select:none; transition:transform 0.12s, box-shadow 0.15s; }
+  .map-node-boss { font-size:20px; border-width:3px !important; animation:pulse-boss-node 1.4s ease-in-out infinite alternate; }
+  @keyframes pulse-boss-node { from { box-shadow:0 0 10px #c0303088; } to { box-shadow:0 0 22px #c03030cc, 0 0 40px #c0303044; } }
   .map-node-current { z-index:3; transform:scale(1.1); }
   .map-node-visited { opacity:0.6; filter:grayscale(0.4) brightness(0.85); }
   .map-node-accessible { cursor:pointer; z-index:2; animation:pulse-map-node 1.1s ease-in-out infinite alternate; }

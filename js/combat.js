@@ -125,7 +125,19 @@ function gainPlayerBlock(amount) {
   const actual = player.vulnerable > 0 ? Math.floor(withDex * 0.75) : withDex;
   const gained = Math.max(0, actual);
   player.block += gained;
-  if (gained > 0) SFX.block();
+  if (gained > 0) {
+    SFX.block();
+    // ジャガーノート: ブロック獲得時ランダムな敵にダメージ
+    if (player.powers && player.powers.juggernaut > 0) {
+      const alive = enemies.filter(e => e.hp > 0);
+      if (alive.length > 0) {
+        const t = alive[Math.floor(Math.random() * alive.length)];
+        const dmg = dealDamageToEnemy(t, player.powers.juggernaut);
+        log(`⚙️ ジャガーノート: ${t.name}に${dmg}ダメージ！`, 'damage');
+        setTimeout(()=>{ animateHit(`enemy-sprite-${t.id}`); spawnFloatDmg(dmg,`enemy-sprite-${t.id}`,'attack'); },80);
+      }
+    }
+  }
   return gained;
 }
 
@@ -176,7 +188,7 @@ function dealDamageToEnemy(target, baseValue) {
     target.stolenGold = 0;
   }
   // 分裂判定: HP半減時に行動予定を「分裂」に上書きするだけ（実際の分裂は次のターン行動時）
-  if (target.def.splitOnHalfHp && !target.splitDone && !target.pendingSplit && target.hp > 0 && target.hp <= Math.floor(target.maxHp / 2)) {
+  if ((target.def.splitOnHalfHp || target.def.splitTypes) && !target.splitDone && !target.pendingSplit && target.hp > 0 && target.hp <= Math.floor(target.maxHp / 2)) {
     target.pendingSplit = true;
     target.intent = buildIntent({ name:'分裂', split:true });
     log(`${target.name}のHPが半減！次の行動で分裂する`, 'important');
@@ -202,12 +214,22 @@ function doSplit(e) {
   e.pendingSplit = false;
   e.splitDone = true;
   const splitHP = e.hp;
-  e.hp = 0;
-  const def2 = ENEMY_DEFS[e.def.splitOnHalfHp];
-  [0, 1].forEach(() => {
-    const newId = enemies.length;
+  const splitName = e.name;
+
+  // 元の敵を配列から除去（hp=0で残さない）
+  const idx = enemies.indexOf(e);
+  if (idx !== -1) enemies.splice(idx, 1);
+
+  // 同種×2 か 異種リスト か
+  const typeIds = e.def.splitTypes
+    ? e.def.splitTypes
+    : [e.def.splitOnHalfHp, e.def.splitOnHalfHp];
+
+  const nextId = () => enemies.reduce((m, x) => Math.max(m, x.id), -1) + 1;
+  typeIds.forEach(typeId => {
+    const def2 = ENEMY_DEFS[typeId];
     enemies.push({
-      id:newId, def:def2,
+      id:nextId(), def:def2,
       name:def2.name, sprite:def2.sprite,
       hp:splitHP, maxHp:splitHP,
       block:0, weak:0, vulnerable:0, jaku:0, strength:0, ritual:0,
@@ -215,9 +237,8 @@ function doSplit(e) {
       splitDone:false, stolenGold:0, fled:false,
       intent:null, turnCount:0, lastMoveIndex:-1,
     });
-    // intents は endTurn の setEnemyIntent で一括設定される
   });
-  log(`${e.name}が分裂した！ ${def2.name}×2 (HP各${splitHP})`, 'important');
+  log(`${splitName}が分裂した！ (HP各${splitHP})`, 'important');
   buildEnemyDOM();
 }
 
@@ -225,7 +246,7 @@ function doSplit(e) {
 function getEffectiveCost(card) {
   if (card.xCost) return 0;
   if (player.powers && player.powers.corruption && (card.type === 'skill' || card.type === 'defend')) return 0;
-  return card.cost;
+  return Math.max(0, card.cost - (card._costReduction || 0));
 }
 function getDisplayCost(card) {
   if (card.xCost) return 'X';
@@ -248,6 +269,11 @@ function getCardClass(card) {
   return 'attack-card';
 }
 function triggerOnExhaust(card) {
+  // 見張り: このカード自身が廃棄された時エネルギー獲得
+  if (card && card.onExhaustGainEnergy) {
+    energy += card.onExhaustGainEnergy;
+    log(`👁 見張り: 廃棄 → エネルギー+${card.onExhaustGainEnergy}`, 'buff');
+  }
   if (!player || !player.powers) return;
   if (player.powers.feelNoPain > 0) {
     const b = gainPlayerBlock(player.powers.feelNoPain);
@@ -288,6 +314,7 @@ function executeCard(card, cardIndex, targetId) {
     player.hp = Math.max(0, player.hp - card.loseHp);
     log(`HP${card.loseHp}を消費した`, 'debuff');
     spawnFloatDmg(card.loseHp, 'player-sprite', 'attack');
+    onPlayerHpLoss();
     if (player.hp <= 0) { render(); setTimeout(onDefeat, 200); return; }
   }
   // 即時エネルギー取得
@@ -327,10 +354,33 @@ function executeCard(card, cardIndex, targetId) {
       baseValue = card.value + card.perStrikeDmg * sc;
       log(`パーフェクトストライク: ストライク系${sc}枚 → ${baseValue}ダメージ`, 'damage');
     }
+    // ヘヴィブレード: 筋力倍率を追加適用（dealDamageToEnemy が+1回分追加するので mult-1 だけ先乗せ）
+    if (card.strengthMultiplier && player.strength > 0) {
+      baseValue += player.strength * (card.strengthMultiplier - 1);
+    }
+    // ボディスラム: 現在ブロック値をダメージに（dealDamageToEnemy が+str するので先に引く）
+    if (card.damageEqualsBlock) {
+      baseValue = Math.max(0, player.block) - (player.strength || 0);
+    }
+    // ランページ: 使用ごとにダメージ増加
+    if (card.rampageDmgIncrease) {
+      if (card._rampageBonus == null) card._rampageBonus = 0;
+      baseValue += card._rampageBonus;
+      card._rampageBonus += card.rampageDmgIncrease;
+    }
+    // 霊魂切断: アタック以外の手札を先に廃棄
+    if (card.exhaustNonAttackHand) {
+      const toEx = [...hand].filter(c => c.type !== 'attack' && c.type !== 'attack-all');
+      toEx.forEach(c => {
+        const idx = hand.indexOf(c);
+        if (idx >= 0) { hand.splice(idx, 1); exhausted.push(c); triggerOnExhaust(c); }
+      });
+      if (toEx.length > 0) log(`霊魂切断: ${toEx.length}枚を廃棄`, 'buff');
+    }
     // 赤べこ: 戦闘中最初のアタックに+8ダメージ
     const akabekoRelic = relics.find(r => r.id === 'akabeko');
     if (akabekoRelic && !akabekoRelic.used) { akabekoRelic.used = true; baseValue += 8; log('🐄 赤べこ: ダメージ+8','buff'); }
-    const target = enemies[targetId];
+    const target = targetId != null ? enemies.find(e => e.id === targetId) : null;
     let totalDmg = 0;
     for (let h = 0; h < hits; h++) {
       let t = target;
@@ -355,6 +405,7 @@ function executeCard(card, cardIndex, targetId) {
     if (card.ifVulnerable && target && target.jaku > 0) { energy++; drawCards(1); log(`ドロップキック: 弱体中 → エネルギー+1・1枚ドロー`,'buff'); }
     if (card.addCopyToDiscard) { discard.push({...CARD_MAP[card.id], battleOnly:true}); log(`${card.name}のコピーが捨て札へ`); }
     if (card.addWound) { for (let w=0;w<card.addWound;w++) discard.push({...CARD_MAP['wound']}); log(`傷が捨て札に追加された`,'debuff'); }
+    if (card.addDazeToDiscard) { for (let d=0;d<card.addDazeToDiscard;d++) discard.push({...CARD_MAP['daze']}); log(`めまいが捨て札に追加された`,'debuff'); }
     if (card.feedOnKill && target && target.hp <= 0) {
       player.maxHp += card.feedOnKill; player.hp = Math.min(player.hp + card.feedOnKill, player.maxHp);
       log(`🍖 捕食: 最大HP+${card.feedOnKill}！`,'buff');
@@ -430,6 +481,8 @@ function executeCard(card, cardIndex, targetId) {
       if (healed > 0) { spawnFloatDmg(healed,'player-sprite','heal'); log(`死神: HP+${healed} 回復`,'buff'); }
     }
     if (card.addBurn) { for (let b=0;b<card.addBurn;b++) discard.push({...CARD_MAP['burn']}); log(`火傷が捨て札に追加された`,'debuff'); }
+    if (card.allWeak)       { enemies.filter(e=>e.hp>0).forEach(e=>{ e.weak += card.allWeak;       log(`${e.name}に脱力${card.allWeak}付与`,'buff'); }); }
+    if (card.allVulnerable) { enemies.filter(e=>e.hp>0).forEach(e=>{ e.jaku += card.allVulnerable; log(`${e.name}に弱体${card.allVulnerable}付与`,'buff'); }); }
     if (player.rageTurn > 0) {
       const b = gainPlayerBlock(player.rageTurn); spawnFloatDmg(b,'player-sprite','block');
     }
@@ -458,12 +511,44 @@ function executeCard(card, cardIndex, targetId) {
       if (player.block > before) spawnFloatDmg(player.block-before,'player-sprite','block');
     }
     if (card.doubleStrength) { player.strength *= 2; log(`${card.name}: 筋力 → ${player.strength}！`,'buff'); }
-    if (card.gainStrength)   { player.strength += card.gainStrength; log(`${card.name}: 筋力+${card.gainStrength} (合計: ${player.strength})`,'buff'); }
+    // 弱点発見: 条件付き筋力獲得（通常のgainStrengthより先に処理）
+    if (card.ifEnemyAttacking) {
+      const attacking = enemies.some(e => e.hp > 0 && e.intent && e.intent.atkDmg > 0);
+      if (attacking) {
+        player.strength += card.gainStrength || 0;
+        log(`${card.name}: 攻撃予定の敵あり → 筋力+${card.gainStrength || 0}`, 'buff');
+      } else {
+        log(`${card.name}: 攻撃予定の敵がいない`, 'debuff');
+      }
+    }
+    if (card.gainStrength && !card.ifEnemyAttacking) { player.strength += card.gainStrength; log(`${card.name}: 筋力+${card.gainStrength} (合計: ${player.strength})`,'buff'); }
+    if (card.loseStrengthEOT) { player.loseStrengthEOT = (player.loseStrengthEOT||0) + card.loseStrengthEOT; }
     if (card.allWeak)        { enemies.filter(e=>e.hp>0).forEach(e=>{ e.weak += card.allWeak; log(`${e.name}に脱力${card.allWeak}付与`,'buff'); }); }
     if (card.allVulnerable)  { enemies.filter(e=>e.hp>0).forEach(e=>{ e.jaku += card.allVulnerable; log(`${e.name}に弱体${card.allVulnerable}付与`,'buff'); }); }
     if (card.targetStrDown)  {
-      const t = targetId != null ? enemies[targetId] : enemies.find(e=>e.hp>0);
+      const t = targetId != null ? enemies.find(e => e.id === targetId) : enemies.find(e=>e.hp>0);
       if (t) { t.strength = (t.strength||0) - card.targetStrDown; log(`${t.name}の筋力-${card.targetStrDown} (合計: ${t.strength})`,'buff'); }
+    }
+    // セカンドウィンド: アタック以外の手札を廃棄してブロック獲得
+    if (card.secondWind) {
+      const toEx = [...hand].filter(c => c.type !== 'attack' && c.type !== 'attack-all');
+      toEx.forEach(c => {
+        const idx = hand.indexOf(c);
+        if (idx >= 0) { hand.splice(idx, 1); exhausted.push(c); triggerOnExhaust(c); }
+      });
+      const swBlock = gainPlayerBlock(toEx.length * card.secondWind);
+      if (swBlock > 0) spawnFloatDmg(swBlock, 'player-sprite', 'block');
+      log(`セカンドウィンド: ${toEx.length}枚廃棄 → ブロック+${swBlock}`, 'buff');
+    }
+    // バトルトランス: ドローしてこのターンの追加ドローを禁止
+    if (card.noMoreDraw) {
+      drawCards(card.draw || 0);
+      player.noMoreDraw = true;
+    }
+    // 炎の障壁: このターン攻撃を受けると反撃ダメージ
+    if (card.flameBarrier) {
+      player.flameBarrier = (player.flameBarrier || 0) + card.flameBarrier;
+      log(`${card.name}: このターン攻撃を受けると${player.flameBarrier}ダメージ反撃`, 'buff');
     }
     if (card.exhaustChoose) {
       if (hand.length === 0) {
@@ -477,7 +562,8 @@ function executeCard(card, cardIndex, targetId) {
             pileArr.splice(idx, 1);
             exhausted.push(picked);
             triggerOnExhaust(picked);
-            log(`${card.name}: ${picked.name}を破棄`, 'buff');
+            log(`${card.name}: ${picked.name}を廃棄`, 'buff');
+            if (card.draw) drawCards(card.draw);
             render();
           },
           () => { render(); },
@@ -518,6 +604,8 @@ function executeCard(card, cardIndex, targetId) {
   // ── パワー ─────────────────────────────────────────────────────
   } else if (card.type === 'power') {
     if (card.gainStrength) { player.strength += card.gainStrength; log(`${card.name}: 筋力+${card.gainStrength} (合計: ${player.strength})`,'buff'); }
+    if (card.gainWeak)     { player.weak += card.gainWeak; log(`${card.name}: 自分に脱力${card.gainWeak}付与`, 'debuff'); }
+    if (card.gainJaku)     { player.jaku += card.gainJaku; log(`${card.name}: 自分に弱体${card.gainJaku}付与`, 'debuff'); }
     if (card.powerEffect) {
       if (!player.powers) player.powers = {};
       const st = card.powerStacks || 1;
@@ -530,13 +618,18 @@ function executeCard(card, cardIndex, targetId) {
         case 'evolve':       player.powers.evolve       = (player.powers.evolve||0)+st;         log(`${card.name}: ステータスドロー時${player.powers.evolve}枚追加ドロー`,'buff'); break;
         case 'darkEmbrace':  player.powers.darkEmbrace  = (player.powers.darkEmbrace||0)+st;   log(`${card.name}: 破棄時${player.powers.darkEmbrace}枚ドロー`,'buff'); break;
         case 'demonForm':    player.powers.demonForm    = (player.powers.demonForm||0)+st;      log(`${card.name}: 毎ターン筋力+${player.powers.demonForm}`,'buff'); break;
+        case 'flameBreath':  player.powers.flameBreath  = (player.powers.flameBreath||0)+st;   log(`${card.name}: 状態異常ドロー時全体${player.powers.flameBreath}ダメージ`,'buff'); break;
+        case 'combust':      player.powers.combust      = (player.powers.combust||0)+st;        log(`${card.name}: ターン終了時HP-1・全体${player.powers.combust}ダメージ`,'buff'); break;
+        case 'juggernaut':   player.powers.juggernaut   = (player.powers.juggernaut||0)+st;    log(`${card.name}: ブロック獲得時ランダムな敵に${player.powers.juggernaut}ダメージ`,'buff'); break;
+        case 'barricade':    player.powers.barricade    = true;                                  log(`${card.name}: ターン開始時ブロックを失わない`,'buff'); break;
+        case 'berserk':      player.powers.berserk      = (player.powers.berserk||0)+1;         log(`${card.name}: ターン開始時エネルギー+1`,'buff'); break;
       }
     }
     // Enrage (パワー使用時)
     enemies.forEach(e=>{ if(e.hp>0 && e.enrage>0) { e.strength+=e.enrage; log(`👑 ${e.name}の激怒！ 筋力+${e.enrage} (合計: ${e.strength})`,'buff'); } });
   }
 
-  if (card.draw) drawCards(card.draw);
+  if (card.draw && !card.noMoreDraw) drawCards(card.draw);
   if (enemies.every(e=>e.hp<=0)) { setTimeout(onVictory,400); return; }
   render();
 }
@@ -571,6 +664,25 @@ function endTurn() {
     const b = gainPlayerBlock(player.powers.metallicize);
     log(`🪨 金属化: ブロック+${b}`,'buff');
     spawnFloatDmg(b,'player-sprite','block');
+  }
+
+  // 燃焼: ターン終了時HP-1 + 全敵にダメージ
+  if (player.powers && player.powers.combust > 0) {
+    player.hp = Math.max(0, player.hp - 1);
+    log(`💥 燃焼: HP-1`, 'debuff');
+    spawnFloatDmg(1, 'player-sprite', 'attack');
+    enemies.filter(e => e.hp > 0).forEach(e => {
+      const dmg = dealDamageToEnemy(e, player.powers.combust);
+      log(`  ${e.name}に${dmg}ダメージ`, 'damage');
+      setTimeout(()=>{ animateHit(`enemy-sprite-${e.id}`); spawnFloatDmg(dmg,`enemy-sprite-${e.id}`,'attack'); },80);
+    });
+  }
+
+  // フレックス: ターン終了時に一時筋力を失う
+  if (player.loseStrengthEOT > 0) {
+    player.strength -= player.loseStrengthEOT;
+    log(`フレックス効果終了: 筋力-${player.loseStrengthEOT}`, 'debuff');
+    player.loseStrengthEOT = 0;
   }
 
   // プレイヤーのデバフをターン終了時にカウントダウン
@@ -629,11 +741,16 @@ function endTurn() {
 
     triggerRelics('turn_end');
     discard.push(...hand); hand=[];
-    player.block=0; energy=3;
+    // バリケード: ターン開始時ブロックを失わない
+    if (!(player.powers && player.powers.barricade)) player.block = 0;
+    energy=3;
+    player.noMoreDraw = false;
+    player.flameBarrier = 0;
     enemies.forEach(e=>{ if(e.hp>0) setEnemyIntent(e); });
     drawCards(5);
+    if (enemies.every(e => e.hp <= 0)) { onVictory(); return; }
 
-    // ターン開始時パワー（悪魔化・残虐）
+    // ターン開始時パワー（悪魔化・残虐・狂戦士）
     if (player.powers) {
       if (player.powers.demonForm > 0) {
         player.strength += player.powers.demonForm;
@@ -644,6 +761,10 @@ function endTurn() {
         log(`😈 残虐: HP-${player.powers.brutality}`,'debuff');
         spawnFloatDmg(player.powers.brutality,'player-sprite','attack');
         drawCards(player.powers.brutality);
+      }
+      if (player.powers.berserk > 0) {
+        energy += 1;
+        log(`🪓 狂戦士: エネルギー+1`, 'buff');
       }
     }
 
@@ -733,6 +854,11 @@ function processEnemyAction(e) {
       animateLunge(`enemy-sprite-${e.id}`,'left');
       setTimeout(()=>{ animateHit('player-sprite'); spawnFloatDmg(dmg,'player-sprite','attack'); },180);
       if (dmg > 0) applyPlayerDamagedEffects(dmg, e);
+      else if (player.flameBarrier > 0 && e.hp > 0) {
+        const fbDmg = dealDamageToEnemy(e, player.flameBarrier);
+        log(`🔥 炎の障壁: ${e.name}に${fbDmg}ダメージ反撃！`, 'buff');
+        setTimeout(()=>{ animateHit(`enemy-sprite-${e.id}`); spawnFloatDmg(fbDmg,`enemy-sprite-${e.id}`,'attack'); },300);
+      }
     }
     return;
   }
@@ -754,6 +880,11 @@ function processEnemyAction(e) {
     animateLunge(`enemy-sprite-${e.id}`,'left');
     setTimeout(()=>{ animateHit('player-sprite'); spawnFloatDmg(totalDmg,'player-sprite','attack'); },180);
     if (totalDmg > 0) applyPlayerDamagedEffects(totalDmg, e);
+    else if (player.flameBarrier > 0 && e.hp > 0) {
+      const fbDmg = dealDamageToEnemy(e, player.flameBarrier);
+      log(`🔥 炎の障壁: ${e.name}に${fbDmg}ダメージ反撃！`, 'buff');
+      setTimeout(()=>{ animateHit(`enemy-sprite-${e.id}`); spawnFloatDmg(fbDmg,`enemy-sprite-${e.id}`,'attack'); },300);
+    }
     // ゴールドを盗む
     if (it.stealGold > 0 && totalDmg > 0) {
       const steal = Math.min(player.gold, it.stealGold);
@@ -840,10 +971,28 @@ function triggerRelicAcquire(relic) {
   }
 }
 
+// 血には血を: HP喪失時にコスト軽減
+function onPlayerHpLoss() {
+  const allC = [...deck, ...discard, ...hand, ...exhausted];
+  allC.forEach(c => {
+    if (c.hpLossCostReduction) {
+      c._costReduction = Math.min(c.cost, (c._costReduction || 0) + 1);
+    }
+  });
+}
+
 // プレイヤーがHPダメージを受けたときに呼ぶ (dmg>0 の場合のみ)
 function applyPlayerDamagedEffects(dmg, attacker) {
   SFX.playerHurt();
   triggerRelics('on_player_damaged', dmg);
+  // 炎の障壁: 攻撃してきた敵に反撃ダメージ
+  if (player.flameBarrier > 0 && attacker && attacker.hp > 0) {
+    const fbDmg = dealDamageToEnemy(attacker, player.flameBarrier);
+    log(`🔥 炎の障壁: ${attacker.name}に${fbDmg}ダメージ反撃！`, 'buff');
+    setTimeout(()=>{ animateHit(`enemy-sprite-${attacker.id}`); spawnFloatDmg(fbDmg,`enemy-sprite-${attacker.id}`,'attack'); },300);
+  }
+  // 血には血を: HPを失うたびコスト軽減
+  onPlayerHpLoss();
   // 青銅のウロコ: 攻撃してきた敵に3反撃
   if (relics.some(r => r.id === 'bronze_scales') && attacker && attacker.hp > 0) {
     const raw = 3;

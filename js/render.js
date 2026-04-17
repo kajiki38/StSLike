@@ -33,6 +33,7 @@ function render() {
     if (p.evolve       > 0) pp.push(`<span class="badge power-badge">🧬 進化 ${p.evolve}</span>`);
     if (p.darkEmbrace  > 0) pp.push(`<span class="badge power-badge">🖤 抱擁 ${p.darkEmbrace}</span>`);
     if (p.demonForm    > 0) pp.push(`<span class="badge power-badge">👿 悪魔 ${p.demonForm}</span>`);
+    if (player.flameBarrier > 0) pp.push(`<span class="badge power-badge">🔥 炎の障壁 ${player.flameBarrier}</span>`);
     pRow.innerHTML = pp.join('');
   }
 
@@ -46,10 +47,12 @@ function render() {
       e.weak>0       ? `<span class="badge weak">💜脱力 ${e.weak}${badgeTip('weak')}</span>` : '',
       e.vulnerable>0 ? `<span class="badge vulnerable">🔴脆弱 ${e.vulnerable}${badgeTip('vulnerable')}</span>` : '',
       e.jaku>0       ? `<span class="badge jaku">💔弱体 ${e.jaku}${badgeTip('jaku')}</span>` : '',
-      e.strength>0   ? `<span class="badge strength">💪 ${e.strength}${badgeTip('strength')}</span>` : '',
+      e.strength>0   ? `<span class="badge strength">💪 ${e.strength}${badgeTip('strength')}</span>` :
+      e.strength<0   ? `<span class="badge strength" style="border-color:#888;color:#aaa">💪 ${e.strength}${badgeTip('strength')}</span>` : '',
       e.ritual>0     ? `<span class="badge ritual">🌀 ${e.ritual}${badgeTip('ritual')}</span>` : '',
       e.curlUp>0 && !e.curlUpTriggered ? `<span class="badge curledup">🌀 まるくなる${e.curlUp}${badgeTip('curledup')}</span>` : '',
       e.sharpHide>0  ? `<span class="badge sharphide">🔪シャープハイド${e.sharpHide}</span>` : '',
+      (e.def.splitTypes||e.def.splitOnHalfHp)&&!e.splitDone ? `<span class="badge split-ability">💥分裂</span>` : '',
     ].join('');
     document.getElementById(`enemy-intent-${e.id}`).innerHTML=formatIntent(e);
     slot.className='enemy-slot'+((targeting||pendingPotion)?' targetable':'');

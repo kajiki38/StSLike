@@ -265,8 +265,8 @@ function showNeow() {
   shuffle(shuffled);
   neowChoices = shuffled.slice(0, 3);
   document.getElementById('event-title').textContent = '🐳 ネオーの恩恵';
-  document.getElementById('event-desc').textContent =
-    '大きなクジラのような生物・ネオーが語りかけてくる。「旅の始まりに、私からの贈り物を受け取りなさい。」';
+  document.getElementById('event-desc').innerHTML =
+    '大きなクジラのような謎の生物・ネオーが語りかけてくる。<br>「私が君を 呼び戻した...」';
   document.getElementById('event-choices').innerHTML = neowChoices.map((b, i) => `
     <button class="event-choice-btn" onclick="pickNeow(${i})">
       ${b.label}
@@ -480,7 +480,7 @@ function event2ChooseRemove() {
   );
 }
 function handleBoss() {
-  startBattle([ENEMY_DEFS.guardian]);
+  startBattle([ENEMY_DEFS[mapData.bossId]]);
 }
 
 // ================================================================

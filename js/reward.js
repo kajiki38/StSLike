@@ -117,7 +117,7 @@ function onEliteVictory() {
 }
 
 function onBossVictory() {
-  log("🏆 ガーディアンを撃破！ クリア！", "important");
+  log("🏆 ボスを撃破！ クリア！", "important");
   const allCards = [...deck, ...discard, ...hand, ...exhausted].filter(
     (c) => !c.battleOnly,
   );
@@ -325,6 +325,12 @@ function getUpgradePreview(card) {
       return { name: "ツインストライク+", desc: "7ダメージ×2" };
     case "sweep":
       return { name: "なぎ払い+", desc: "全体に11ダメージ" };
+    case "thunder_clap":
+      return { name: "サンダークラップ+", desc: "敵全体に7ダメージ\n弱体1を与える" };
+    case "heavy_blade":
+      return { name: "ヘヴィブレード+", desc: "14ダメージ\n筋力ボーナス5倍" };
+    case "body_slam":
+      return { name: "ボディスラム+", desc: "現在のブロック値の\nダメージ (コスト0)" };
     case "carnage":
       return { name: "大虐殺+", desc: "28ダメージ" };
     // コモン スキル
@@ -336,6 +342,8 @@ function getUpgradePreview(card) {
       return { name: "不屈の闘志+", desc: "9ブロック\n手札1枚を選んで破棄" };
     case "bloodletting":
       return { name: "瀉血+", desc: "HP2消費\nエネルギー+2" };
+    case "flex":
+      return { name: "フレックス+", desc: "筋力4を得る\nターン終了時に筋力4を失う" };
     // コモン パワー
     case "inflame":
       return { name: "発火+", desc: "筋力+3" };
@@ -355,6 +363,14 @@ function getUpgradePreview(card) {
       return { name: "ヘモキネシス+", desc: "HP2消費\n20ダメージ" };
     case "whirlwind":
       return { name: "旋風刃+", desc: "全体に8ダメージ×\nエネルギー消費量" };
+    case "rampage":
+      return { name: "ランページ+", desc: "8ダメージ\n使用のたびダメージ+8" };
+    case "reckless_charge":
+      return { name: "無謀なる突進+", desc: "10ダメージ\nめまいを捨て札に追加" };
+    case "blood_for_blood":
+      return { name: "血には血を+", desc: "HPを失うたびコスト-1\n22ダメージ (コスト3)" };
+    case "cleave_soul":
+      return { name: "霊魂切断+", desc: "アタック以外の手札を廃棄\n22ダメージ" };
     // アンコモン スキル
     case "seeing_red":
       return { name: "激昂+", desc: "エネルギー+2\n破棄 (コスト0)" };
@@ -368,6 +384,20 @@ function getUpgradePreview(card) {
       return { name: "やせ我慢+", desc: "傷×2を手札に追加\nブロック+20" };
     case "ghostly_armor":
       return { name: "ゴーストアーマー+", desc: "13ブロック" };
+    case "second_wind":
+      return { name: "セカンドウィンド+", desc: "アタック以外の手札を廃棄\n廃棄1枚につきブロック+7" };
+    case "battle_trance":
+      return { name: "バトルトランス+", desc: "4枚ドロー\nこのターン追加ドロー不可" };
+    case "intimidate":
+      return { name: "威嚇+", desc: "敵全体に脱力2を与える\n廃棄" };
+    case "spot_weakness":
+      return { name: "弱点発見+", desc: "敵が攻撃予定なら\n筋力+4を得る" };
+    case "flame_barrier":
+      return { name: "炎の障壁+", desc: "16ブロック\n攻撃を受けるたび\n攻撃した敵に6ダメージ" };
+    case "burning_pact":
+      return { name: "焦熱の契約+", desc: "手札1枚を廃棄\n3枚ドロー" };
+    case "sentinel":
+      return { name: "見張り+", desc: "8ブロック\n廃棄された時エネルギー+3" };
     // アンコモン パワー
     case "brutality":
       return { name: "残虐+", desc: "各ターン開始時\nHP1消費・2枚ドロー" };
@@ -379,6 +409,10 @@ function getUpgradePreview(card) {
       return { name: "進化+", desc: "状態異常カード\nドロー時2枚追加ドロー" };
     case "dark_embrace":
       return { name: "闇の抱擁+", desc: "カード破棄時\n2枚ドロー" };
+    case "flame_breath":
+      return { name: "炎の吐息+", desc: "状態異常か呪いを引くたび\n敵全体に10ダメージ" };
+    case "combust":
+      return { name: "燃焼+", desc: "ターン終了時HP-1\n敵全体に7ダメージ" };
     // レア 攻撃
     case "fiend_fire":
       return { name: "鬼火+", desc: "手札を全破棄\n1枚につき10ダメージ" };
@@ -388,6 +422,8 @@ function getUpgradePreview(card) {
       return { name: "死神+", desc: "全体5ダメージ\n与えたHP分を回復" };
     case "feed":
       return { name: "捕食+", desc: "12ダメージ\n倒すと最大HP+4\n破棄" };
+    case "skull_bash":
+      return { name: "脳天割り+", desc: "42ダメージ" };
     // レア スキル
     case "impervious":
       return { name: "不動+", desc: "30ブロック\n破棄 (コスト1)" };
@@ -403,6 +439,12 @@ function getUpgradePreview(card) {
         name: "堕落+",
         desc: "スキルのコストは0\nスキル使用時破棄 (コスト2)",
       };
+    case "juggernaut":
+      return { name: "ジャガーノート+", desc: "ブロック獲得時\nランダムな敵に7ダメージ" };
+    case "barricade":
+      return { name: "バリケード+", desc: "ターン開始時に\nブロックを失わない (コスト2)" };
+    case "berserk":
+      return { name: "狂戦士+", desc: "弱体1を得る\nターン開始時エネルギー+1" };
     default:
       return { name: card.name + "+", desc: card.desc };
   }
@@ -490,6 +532,21 @@ function upgradeCard(card) {
       card.value = 11;
       card.desc = "全体に11ダメージ";
       break;
+    case "thunder_clap":
+      card.name = "サンダークラップ+";
+      card.value = 7;
+      card.desc = "敵全体に7ダメージ\n弱体1を与える";
+      break;
+    case "heavy_blade":
+      card.name = "ヘヴィブレード+";
+      card.strengthMultiplier = 5;
+      card.desc = "14ダメージ\n筋力ボーナス5倍";
+      break;
+    case "body_slam":
+      card.name = "ボディスラム+";
+      card.cost = 0;
+      card.desc = "現在のブロック値の\nダメージ (コスト0)";
+      break;
     case "carnage":
       card.name = "大虐殺+";
       card.value = 28;
@@ -516,6 +573,12 @@ function upgradeCard(card) {
       card.name = "瀉血+";
       card.loseHp = 2;
       card.desc = "HP2消費\nエネルギー+2";
+      break;
+    case "flex":
+      card.name = "フレックス+";
+      card.gainStrength = 4;
+      card.loseStrengthEOT = 4;
+      card.desc = "筋力4を得る\nターン終了時に筋力4を失う";
       break;
     // コモン パワー
     case "inflame":
@@ -556,6 +619,27 @@ function upgradeCard(card) {
       card.value = 8;
       card.desc = "全体に8ダメージ×\nエネルギー消費量";
       break;
+    case "rampage":
+      card.name = "ランページ+";
+      card.rampageDmgIncrease = 8;
+      card.desc = "8ダメージ\n使用のたびダメージ+8";
+      break;
+    case "reckless_charge":
+      card.name = "無謀なる突進+";
+      card.value = 10;
+      card.desc = "10ダメージ\nめまいを捨て札に追加";
+      break;
+    case "blood_for_blood":
+      card.name = "血には血を+";
+      card.cost = 3;
+      card.value = 22;
+      card.desc = "HPを失うたびコスト-1\n22ダメージ (コスト3)";
+      break;
+    case "cleave_soul":
+      card.name = "霊魂切断+";
+      card.value = 22;
+      card.desc = "アタック以外の手札を廃棄\n22ダメージ";
+      break;
     // アンコモン スキル
     case "seeing_red":
       card.name = "激昂+";
@@ -588,6 +672,43 @@ function upgradeCard(card) {
       card.value = 13;
       card.desc = "13ブロック";
       break;
+    case "second_wind":
+      card.name = "セカンドウィンド+";
+      card.secondWind = 7;
+      card.desc = "アタック以外の手札を廃棄\n廃棄1枚につきブロック+7";
+      break;
+    case "battle_trance":
+      card.name = "バトルトランス+";
+      card.draw = 4;
+      card.desc = "4枚ドロー\nこのターン追加ドロー不可";
+      break;
+    case "intimidate":
+      card.name = "威嚇+";
+      card.allWeak = 2;
+      card.desc = "敵全体に脱力2を与える\n廃棄";
+      break;
+    case "spot_weakness":
+      card.name = "弱点発見+";
+      card.gainStrength = 4;
+      card.desc = "敵が攻撃予定なら\n筋力+4を得る";
+      break;
+    case "flame_barrier":
+      card.name = "炎の障壁+";
+      card.value = 16;
+      card.flameBarrier = 6;
+      card.desc = "16ブロック\n攻撃を受けるたび\n攻撃した敵に6ダメージ";
+      break;
+    case "burning_pact":
+      card.name = "焦熱の契約+";
+      card.draw = 3;
+      card.desc = "手札1枚を廃棄\n3枚ドロー";
+      break;
+    case "sentinel":
+      card.name = "見張り+";
+      card.value = 8;
+      card.onExhaustGainEnergy = 3;
+      card.desc = "8ブロック\n廃棄された時エネルギー+3";
+      break;
     // アンコモン パワー
     case "brutality":
       card.name =
@@ -619,6 +740,16 @@ function upgradeCard(card) {
       card.powerStacks = 2;
       card.desc = "カード破棄時\n2枚ドロー";
       break;
+    case "flame_breath":
+      card.name = "炎の吐息+";
+      card.powerStacks = 10;
+      card.desc = "状態異常か呪いを引くたび\n敵全体に10ダメージ";
+      break;
+    case "combust":
+      card.name = "燃焼+";
+      card.powerStacks = 7;
+      card.desc = "ターン終了時HP-1\n敵全体に7ダメージ";
+      break;
     // レア 攻撃
     case "fiend_fire":
       card.name = "鬼火+";
@@ -641,6 +772,11 @@ function upgradeCard(card) {
       card.feedOnKill = 4;
       card.desc = "12ダメージ\n倒すと最大HP+4\n破棄";
       break;
+    case "skull_bash":
+      card.name = "脳天割り+";
+      card.value = 42;
+      card.desc = "42ダメージ";
+      break;
     // レア スキル
     case "impervious":
       card.name = "不動+";
@@ -662,6 +798,21 @@ function upgradeCard(card) {
       card.name = "悪魔化+";
       card.powerStacks = 3;
       card.desc = "各ターン開始時\n筋力+3";
+      break;
+    case "juggernaut":
+      card.name = "ジャガーノート+";
+      card.powerStacks = 7;
+      card.desc = "ブロック獲得時\nランダムな敵に7ダメージ";
+      break;
+    case "barricade":
+      card.name = "バリケード+";
+      card.cost = 2;
+      card.desc = "ターン開始時に\nブロックを失わない (コスト2)";
+      break;
+    case "berserk":
+      card.name = "狂戦士+";
+      card.gainJaku = 1;
+      card.desc = "弱体1を得る\nターン開始時エネルギー+1";
       break;
     default:
       card.name += "+";

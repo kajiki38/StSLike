@@ -247,6 +247,19 @@ const ENEMY_DEFS = {
   },
 
   // ── ボス ──
+  slime_boss: {
+    id:'slime_boss',
+    name:'スライムボス', sprite:'💚', hpMin:140, hpMax:150,
+    isBoss:true,
+    splitTypes:['acid_slime_l','spike_slime_l'],
+    pattern:'sequence', loopFrom:0,
+    moves:[
+      { name:'汚物スプレー',      addSlimed:5 },
+      { name:'行動準備',          charge:true },
+      { name:'スライムクラッシュ', atkDmg:38 },
+    ],
+  },
+
   guardian: {
     id:'guardian',
     name:'ガーディアン', sprite:'🤖', hpMin:240, hpMax:250,

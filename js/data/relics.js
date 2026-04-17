@@ -91,18 +91,14 @@ const RELIC_DEFS = {
   nunchaku: {
     id:'nunchaku', name:'ヌンチャク', icon:'🥢',
     desc:'アタック10回使用するたびにエネルギー+1。',
-    triggers: {
-      combat_start(ctx, r) { r.counter = 0; },
-    },
   },
 
   happy_flower: {
     id:'happy_flower', name:'ハッピーフラワー', icon:'🌻',
     desc:'3ターンごとにエネルギー+1。',
     triggers: {
-      combat_start(ctx, r) { r.counter = 0; },
       turn_start(ctx, r) {
-        r.counter++;
+        r.counter = (r.counter || 0) + 1;
         if (r.counter % 3 === 0) { energy += 1; log('🌻 ハッピーフラワー: エネルギー+1','buff'); }
       },
     },
@@ -122,9 +118,6 @@ const RELIC_DEFS = {
   pen_nib: {
     id:'pen_nib', name:'ペン先', icon:'✒️',
     desc:'アタック10回使用するたびに、次のアタックのダメージが2倍になる。',
-    triggers: {
-      combat_start(ctx, r) { r.counter = 0; r.ready = false; },
-    },
   },
 
   red_skull: {
