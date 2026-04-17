@@ -156,6 +156,22 @@
   <div class="overlay-box">
     <h2 id="event-card-title">カードを選択</h2>
     <div class="sub" id="event-card-sub"></div>
+    <div id="event-card-preview-panel" style="display:none">
+      <span class="spp-placeholder">カードにカーソルを合わせると強化内容が表示されます</span>
+      <div id="event-card-preview-content" style="display:none; gap:20px; align-items:center; width:100%;">
+        <div class="spp-box">
+          <div class="spp-label">強化前</div>
+          <div id="event-spp-before-name" class="spp-name before"></div>
+          <div id="event-spp-before-desc" class="spp-desc before"></div>
+        </div>
+        <div class="spp-arrow">→</div>
+        <div class="spp-box">
+          <div class="spp-label">強化後</div>
+          <div id="event-spp-after-name" class="spp-name after"></div>
+          <div id="event-spp-after-desc" class="spp-desc after"></div>
+        </div>
+      </div>
+    </div>
     <div id="event-card-list"></div>
     <button class="btn-skip" onclick="closeEventCardPicker()">キャンセル</button>
   </div>

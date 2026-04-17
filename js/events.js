@@ -348,6 +348,7 @@ function neowShowCardChoice(n, rarity, callback) {
 // ================================================================
 let eventCardCallback = null;
 let eventCardCancelCallback = null;
+let eventCardHoverPreviewBuilder = null;
 
 function showEvent2() {
   document.getElementById('event-title').textContent = '★ 謎の鍛冶師';
@@ -378,7 +379,7 @@ function closeEvent() {
 }
 
 // カード選択ピッカーを開く（cards省略時は全デッキカードを表示）
-function openEventCardPicker(title, sub, hoverColor, onSelect, onCancel, cards) {
+function openEventCardPicker(title, sub, hoverColor, onSelect, onCancel, cards, hoverPreviewBuilder) {
   const allCards = cards || [...deck, ...discard].filter(c => !c.battleOnly && !c.eternal);
   if (allCards.length === 0) {
     log('カードがない！', 'debuff'); return;
@@ -386,6 +387,7 @@ function openEventCardPicker(title, sub, hoverColor, onSelect, onCancel, cards) 
   const sorted = [...allCards].sort((a,b) => a.name.localeCompare(b.name));
   eventCardCallback = onSelect;
   eventCardCancelCallback = onCancel || null;
+  eventCardHoverPreviewBuilder = hoverPreviewBuilder || null;
 
   document.getElementById('event-card-title').textContent = title;
   document.getElementById('event-card-sub').textContent = sub;
@@ -394,6 +396,13 @@ function openEventCardPicker(title, sub, hoverColor, onSelect, onCancel, cards) 
   const style = document.getElementById('event-card-hover-style') ||
     (() => { const s = document.createElement('style'); s.id='event-card-hover-style'; document.head.appendChild(s); return s; })();
   style.textContent = `.event-card-item:hover .pile-card { border-color:${hoverColor}!important; box-shadow:0 0 8px ${hoverColor}99!important; }`;
+
+  const previewPanel = document.getElementById('event-card-preview-panel');
+  const previewContent = document.getElementById('event-card-preview-content');
+  const previewPlaceholder = previewPanel ? previewPanel.querySelector('.spp-placeholder') : null;
+  if (previewPanel) previewPanel.style.display = eventCardHoverPreviewBuilder ? 'flex' : 'none';
+  if (previewContent) previewContent.style.display = 'none';
+  if (previewPlaceholder) previewPlaceholder.style.display = '';
 
   document.getElementById('event-card-list').innerHTML = sorted.map((c,i) => {
     const tc = getCardClass(c);
@@ -408,12 +417,41 @@ function openEventCardPicker(title, sub, hoverColor, onSelect, onCancel, cards) 
       </div>
     </div>`;
   }).join('');
+
+  if (eventCardHoverPreviewBuilder) {
+    const items = document.querySelectorAll('#event-card-list .event-card-item');
+    items.forEach((item, i) => {
+      const card = sorted[i];
+      item.addEventListener('mouseenter', () => {
+        if (!card) return;
+        const pre = eventCardHoverPreviewBuilder(card);
+        if (!pre) return;
+        document.getElementById('event-spp-before-name').textContent = pre.beforeName || '';
+        document.getElementById('event-spp-before-desc').textContent = pre.beforeDesc || '';
+        document.getElementById('event-spp-after-name').textContent = pre.afterName || '';
+        document.getElementById('event-spp-after-desc').textContent = pre.afterDesc || '';
+        if (previewPlaceholder) previewPlaceholder.style.display = 'none';
+        if (previewContent) previewContent.style.display = 'flex';
+      });
+      item.addEventListener('mouseleave', () => {
+        if (previewContent) previewContent.style.display = 'none';
+        if (previewPlaceholder) previewPlaceholder.style.display = '';
+      });
+    });
+  }
   document.getElementById('event-card-screen').classList.add('show');
 }
 
 function closeEventCardPicker() {
   document.getElementById('event-card-screen').classList.remove('show');
   eventCardCallback = null;
+  eventCardHoverPreviewBuilder = null;
+  const previewContent = document.getElementById('event-card-preview-content');
+  const previewPanel = document.getElementById('event-card-preview-panel');
+  const previewPlaceholder = previewPanel ? previewPanel.querySelector('.spp-placeholder') : null;
+  if (previewContent) previewContent.style.display = 'none';
+  if (previewPlaceholder) previewPlaceholder.style.display = '';
+  if (previewPanel) previewPanel.style.display = 'none';
   const cb = eventCardCancelCallback;
   eventCardCancelCallback = null;
   if (cb) cb();
@@ -427,6 +465,7 @@ function selectEventCard(pile, idx) {
   // 先にクリアしておくことで、onSelect内で次のピッカーを開いた場合に
   // 新しく設定されたコールバックを誤って上書きしない。
   eventCardCallback = null;
+  eventCardHoverPreviewBuilder = null;
   eventCardCancelCallback = null;
   document.getElementById('event-card-screen').classList.remove('show');
   if (onSelect) onSelect(pileArr, idx, card);
@@ -446,7 +485,17 @@ function event2ChooseUpgrade() {
       showToast({ icon:card.icon, label:'アップグレード', title:`${origName} → ${pre.name}`, sub:pre.desc, color:'#40ffa0' });
       render(); showMapScreen();
     },
-    showEvent2  // キャンセルで3択に戻る
+    showEvent2,  // キャンセルで3択に戻る
+    null,
+    (card) => {
+      const pre = getUpgradePreview(card);
+      return {
+        beforeName: card.name,
+        beforeDesc: card.desc,
+        afterName: pre.name,
+        afterDesc: pre.desc,
+      };
+    }
   );
 }
 

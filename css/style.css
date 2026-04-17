@@ -61,7 +61,9 @@
 
   .enemy-mini-stats { background:rgba(0,0,0,0.65); border:1px solid rgba(255,255,255,0.12); border-radius:7px; padding:7px 10px; width:100%; backdrop-filter:blur(4px); text-align:center; margin-bottom:6px; min-width:0; }
   .enemy-mini-name { font-size:12px; font-weight:bold; color:#f0c060; margin-bottom:5px; }
-  .enemy-mini-stats .hp-row { flex-direction:row-reverse; }
+  .enemy-mini-stats .hp-row { flex-direction:row-reverse; gap:4px; min-width:0; }
+  .enemy-mini-stats .hp-text { font-size:10px; flex:0 0 auto; }
+  .enemy-mini-stats .hp-bar-wrap { min-width:34px; }
   .enemy-mini-stats .status-row { justify-content:center; flex-wrap:wrap; gap:3px; }
   .enemy-mini-stats .badge { font-size:9px; padding:1px 5px; }
   .intent-box { margin-top:6px; background:rgba(245,200,66,0.1); border:1px solid rgba(245,200,66,0.35); border-radius:5px; padding:4px 7px; min-height:38px; }
@@ -295,6 +297,7 @@
   .event-choice-btn .choice-cost { font-size:11px; color:#f98; margin-top:4px; }
   #event-card-screen .overlay-box { border:3px solid #a060ff; min-width:560px; }
   #event-card-screen h2 { color:#c090ff; }
+  #event-card-preview-panel { height:78px; display:flex; gap:20px; align-items:center; justify-content:center; margin:10px 0 8px; background:rgba(20,20,40,0.8); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:10px 24px; }
   #event-card-list { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-height:360px; overflow-y:auto; margin:16px 0; padding:4px; }
   .event-card-item { cursor:pointer; }
   .event-card-item:hover .pile-card { border-color:#c090ff; box-shadow:0 0 8px rgba(192,144,255,0.6); }
