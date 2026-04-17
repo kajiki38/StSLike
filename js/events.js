@@ -423,8 +423,13 @@ function selectEventCard(pile, idx) {
   const pileArr = pile === 'deck' ? deck : pile === 'hand' ? hand : discard;
   const card = pileArr[idx];
   if (!card) return;
+  const onSelect = eventCardCallback;
+  // 先にクリアしておくことで、onSelect内で次のピッカーを開いた場合に
+  // 新しく設定されたコールバックを誤って上書きしない。
+  eventCardCallback = null;
+  eventCardCancelCallback = null;
   document.getElementById('event-card-screen').classList.remove('show');
-  if (eventCardCallback) { eventCardCallback(pileArr, idx, card); eventCardCallback = null; }
+  if (onSelect) onSelect(pileArr, idx, card);
 }
 
 // ── 選択肢1: アップグレード -20G ──
