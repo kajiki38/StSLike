@@ -55,7 +55,7 @@ function render() {
       (e.def.splitTypes||e.def.splitOnHalfHp)&&!e.splitDone ? `<span class="badge split-ability">💥分裂</span>` : '',
     ].join('');
     document.getElementById(`enemy-intent-${e.id}`).innerHTML=formatIntent(e);
-    slot.className='enemy-slot'+((targeting||pendingPotion)?' targetable':'');
+    slot.className='enemy-slot'+(e.def.isBoss?' enemy-slot-boss':'')+((targeting||pendingPotion)?' targetable':'');
     slot.onmouseenter = null;
     slot.onmouseleave = null;
   });
