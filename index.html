@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>StS Like</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="toast-container"></div>
+
+<div id="battlefield">
+  <div id="player-stats">
+    <div class="stat-name">アイアンクラッド</div>
+    <div class="hp-row">
+      <div class="hp-bar-wrap"><div class="hp-fill player" id="player-hp-bar" style="width:100%"></div></div>
+      <div class="hp-text" id="player-hp-text">70/70</div>
+    </div>
+    <div class="status-row">
+      <span class="badge gold"              id="player-gold-badge">💰 99G</span>
+      <span class="badge block hidden"      id="player-block-badge">🛡 0</span>
+      <span class="badge weak hidden"       id="player-weak-badge">💜脱力 0</span>
+      <span class="badge vulnerable hidden" id="player-vuln-badge">🔴脆弱 0</span>
+      <span class="badge jaku hidden"       id="player-jaku-badge">💔弱体 0</span>
+      <span class="badge entangled hidden"  id="player-entangled-badge">🔗拘束 0</span>
+      <span class="badge strength hidden"   id="player-strength-badge">💪 0</span>
+      <span class="badge dexterity hidden"  id="player-dexterity-badge">🏃 0</span>
+    </div>
+    <div class="status-row" id="player-powers-row"></div>
+    <div id="relic-row"></div>
+  </div>
+  <div id="floor-badge"><div id="floor-num">FLOOR 1</div></div>
+  <div id="player-wrap">
+    <div class="sprite" id="player-sprite"><span style="display:inline-block;transform:scaleX(-1)">🤺</span></div>
+    <div class="shadow"></div>
+  </div>
+  <div id="enemies-area"></div>
+  <div id="targeting-hint">対象を選んでください</div>
+  <button id="cancel-target-btn" onclick="cancelTarget()">キャンセル</button>
+</div>
+
+<div id="bottom-ui">
+  <div id="turn-row">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span id="energy-label">エネルギー</span>
+      <div id="energy-display"></div>
+    </div>
+    <div id="potion-row"></div>
+    <div id="pile-info">
+      <button class="pile-btn" onclick="showPileViewer('deck')">山札 <span id="deck-count">0</span></button>
+      <button class="pile-btn" onclick="showPileViewer('discard')">捨て札 <span id="discard-count">0</span></button>
+      <button class="pile-btn" onclick="showPileViewer('exhausted')">破棄済み <span id="exhausted-count">0</span></button>
+    </div>
+    <button id="map-peek-btn" class="pile-btn" onclick="openMapPeek()" style="margin-right:6px">🗺️ マップ</button>
+    <button id="mute-btn" class="pile-btn" onclick="toggleMute()" style="margin-right:6px">🔊</button>
+    <button id="end-turn-btn" onclick="endTurn()">ターン終了</button>
+  </div>
+</div>
+<div id="hand-area">
+  <div id="hand-label">手札</div>
+  <div id="hand"></div>
+</div>
+<div id="log-area"><div id="log"></div></div>
+
+<div class="overlay" id="reward-screen">
+  <div class="overlay-box">
+    <h2>🎁 カード報酬</h2>
+    <div class="sub">1枚選んでデッキに追加できます</div>
+    <div id="reward-cards"></div>
+    <button class="btn-skip" onclick="skipReward()">スキップ</button>
+  </div>
+</div>
+<div class="overlay" id="victory-screen">
+  <div class="overlay-box">
+    <h2>⚔️ 次の戦闘</h2>
+    <div class="sub" id="victory-floor-text"></div>
+    <div class="next-enemies-preview" id="next-enemies-preview"></div>
+    <button class="btn-primary" onclick="startNextBattle()">戦う！</button>
+  </div>
+</div>
+<div class="overlay" id="relic-reward-screen">
+  <div class="overlay-box">
+    <h2>⚡ エリート撃破！</h2>
+    <div class="sub">新たなレリックを獲得した</div>
+    <div id="relic-obtained" style="margin:24px 0">
+      <div id="relic-obtained-icon" style="font-size:56px;margin-bottom:10px"></div>
+      <div id="relic-obtained-name" style="font-size:20px;font-weight:bold;color:#f5c842;margin-bottom:8px"></div>
+      <div id="relic-obtained-desc" style="font-size:13px;color:#aaa;line-height:1.6"></div>
+    </div>
+    <button class="btn-primary" onclick="continueAfterElite()">続ける</button>
+  </div>
+</div>
+<div class="overlay" id="rest-screen">
+  <div class="overlay-box">
+    <div id="rest-player-status" class="player-status-bar"></div>
+    <h2>🏕️ 休憩エリア</h2>
+    <div class="sub" id="rest-floor-text"></div>
+    <div id="rest-choices-area" class="rest-choices">
+      <button class="rest-choice-btn rest-heal" onclick="chooseRest()">
+        <div class="rest-icon">💊</div>
+        <div class="rest-name">休憩</div>
+        <div class="rest-desc">最大HPの30%を<br>回復する</div>
+      </button>
+      <button class="rest-choice-btn rest-smith" onclick="chooseSmith()">
+        <div class="rest-icon">⚒️</div>
+        <div class="rest-name">鍛冶</div>
+        <div class="rest-desc">デッキのカード1枚を<br>アップグレードする</div>
+      </button>
+    </div>
+    <div id="smith-area" style="display:none">
+      <div class="sub">カードにマウスオーバーで強化内容を確認、クリックで強化</div>
+      <div id="smith-preview-panel">
+        <span class="spp-placeholder">カードにカーソルを合わせると強化内容が表示されます</span>
+        <div id="smith-preview-content" style="display:none; gap:20px; align-items:center; width:100%;">
+          <div class="spp-box">
+            <div class="spp-label">強化前</div>
+            <div id="spp-before-name" class="spp-name before"></div>
+            <div id="spp-before-desc" class="spp-desc before"></div>
+          </div>
+          <div class="spp-arrow">→</div>
+          <div class="spp-box">
+            <div class="spp-label">強化後</div>
+            <div id="spp-after-name" class="spp-name after"></div>
+            <div id="spp-after-desc" class="spp-desc after"></div>
+          </div>
+        </div>
+      </div>
+      <div id="smith-cards"></div>
+      <button class="btn-skip" style="margin-top:16px;" onclick="cancelSmith()">戻る</button>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="gameover-screen">
+  <div class="overlay-box">
+    <h2>💀 ゲームオーバー</h2>
+    <div class="stat-summary" id="gameover-summary"></div>
+    <button class="btn-primary" onclick="initGame()">最初から</button>
+  </div>
+</div>
+<div class="overlay" id="potion-card-screen">
+  <div class="overlay-box">
+    <h2 id="potion-card-title">🧪 カード選択</h2>
+    <div class="sub">1枚選んで手札に加えます（このターンコスト0）</div>
+    <div id="potion-card-choices"></div>
+    <button class="btn-skip" onclick="closePotionCardChoice()">キャンセル</button>
+  </div>
+</div>
+<div class="overlay" id="event-screen">
+  <div class="overlay-box">
+    <div id="event-player-status" class="player-status-bar"></div>
+    <h2 id="event-title">★ イベント</h2>
+    <div class="sub" id="event-desc"></div>
+    <div class="event-choice" id="event-choices"></div>
+  </div>
+</div>
+<div class="overlay" id="event-card-screen">
+  <div class="overlay-box">
+    <h2 id="event-card-title">カードを選択</h2>
+    <div class="sub" id="event-card-sub"></div>
+    <div id="event-card-list"></div>
+    <button class="btn-skip" onclick="closeEventCardPicker()">キャンセル</button>
+  </div>
+</div>
+<div class="overlay" id="bosswin-screen">
+  <div class="overlay-box">
+    <h2>🏆 クリア！</h2>
+    <div class="sub">ガーディアンを撃破した！</div>
+    <div id="bosswin-summary" style="font-size:15px;color:#eee;margin:20px 0;line-height:2"></div>
+    <button class="btn-primary" onclick="initGame()">もう一度プレイ</button>
+  </div>
+</div>
+
+<div class="overlay" id="map-screen">
+  <div id="map-overlay-inner">
+    <div id="map-header">
+      <div id="map-header-top">
+        <div id="map-title">🗺️ マップ</div>
+        <div id="map-legend">
+          <span>⚔ 通常戦闘</span>
+          <span>⚡ エリート</span>
+          <span>🏕 休憩</span>
+          <span>🏪 商人</span>
+          <span>📦 宝箱</span>
+          <span>★ イベント</span>
+        </div>
+      </div>
+      <div id="map-player-status" class="player-status-bar"></div>
+    </div>
+    <div id="map-combat-notice" style="display:none;text-align:center;color:#e94560;font-size:12px;padding:4px 0;">
+      戦闘中はマップ移動できません　<button class="pile-btn" onclick="closeMapPeek()" style="margin-left:8px">✕ 閉じる</button>
+    </div>
+    <div id="map-scroll-container">
+      <div id="map-display">
+        <svg id="map-svg"></svg>
+        <div id="map-nodes"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="treasure-screen">
+  <div class="overlay-box">
+    <h2>🎁 宝箱</h2>
+    <div class="sub" id="treasure-floor-text"></div>
+    <div id="treasure-chest-icon">📦</div>
+    <div class="treasure-item">
+      <div class="treasure-item-icon" id="treasure-relic-icon"></div>
+      <div>
+        <div class="treasure-item-name" id="treasure-relic-name"></div>
+        <div class="treasure-item-desc" id="treasure-relic-desc"></div>
+      </div>
+    </div>
+    <div class="treasure-item">
+      <div class="treasure-item-icon">💰</div>
+      <div>
+        <div class="treasure-item-name">ゴールド <span id="treasure-gold-amount">0</span>G</div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="claimTreasure()" style="margin-top:20px">受け取る！</button>
+  </div>
+</div>
+
+<div class="overlay" id="shop-screen">
+  <div class="overlay-box">
+    <div id="shop-player-status" class="player-status-bar"></div>
+    <h2>🏪 商人の店</h2>
+    <div id="shop-gold-display">所持ゴールド: <span id="shop-gold">0</span>💰</div>
+
+    <div class="shop-section">
+      <div class="shop-section-title">🃏 カード (クリックで購入)</div>
+      <div class="shop-items-row" id="shop-cards-area"></div>
+    </div>
+
+    <div class="shop-section">
+      <div class="shop-section-title">🏺 レリック (クリックで購入)</div>
+      <div class="shop-items-row" id="shop-relics-area"></div>
+    </div>
+
+    <div class="shop-section">
+      <div class="shop-section-title">🧪 ポーション (クリックで購入)</div>
+      <div class="shop-items-row" id="shop-potions-area"></div>
+    </div>
+
+    <div class="shop-section">
+      <div class="shop-section-title">🗑️ カード削除サービス</div>
+      <button id="shop-remove-btn" onclick="startCardRemoval()">
+        デッキからカードを1枚削除 (<span id="shop-remove-cost">75</span>💰)
+      </button>
+      <div id="shop-remove-picker" style="display:none">
+        <div class="sub" style="margin-bottom:6px;font-size:12px">削除するカードをクリック（赤くハイライト）</div>
+        <div id="shop-remove-picker-cards"></div>
+        <button class="btn-skip" onclick="cancelCardRemoval()" style="margin-top:8px;font-size:13px">キャンセル</button>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="leaveShop()" style="margin-top:20px;display:block;width:100%;text-align:center">出発する ⚔️</button>
+  </div>
+</div>
+
+<div id="pile-viewer-overlay" onclick="if(event.target===this)closePileViewer()">
+  <div id="pile-viewer">
+    <div id="pile-viewer-header">
+      <span id="pile-viewer-title">山札</span>
+      <button id="pile-viewer-close" onclick="closePileViewer()">✕ 閉じる</button>
+    </div>
+    <div id="pile-viewer-cards"></div>
+  </div>
+</div>
+
+<div id="map-floating-tooltip">
+  <div id="map-floating-tooltip-name"></div>
+  <div id="map-floating-tooltip-desc"></div>
+</div>
+
+<script src="js/data/cards.js"></script>
+<script src="js/data/enemies.js"></script>
+<script src="js/data/relics.js"></script>
+<script src="js/sfx.js"></script>
+<script src="js/state.js"></script>
+<script src="js/init.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/reward.js"></script>
+<script src="js/render.js"></script>
+<script src="js/map.js"></script>
+<script src="js/events.js"></script>
+<script src="js/shop.js"></script>
+</body>
+</html>
